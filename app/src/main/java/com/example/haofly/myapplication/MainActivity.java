@@ -1,6 +1,7 @@
 package com.example.haofly.myapplication;
 
 import android.content.Context;
+import android.content.Intent;
 import android.location.Location;
 import android.location.LocationManager;
 
@@ -9,6 +10,7 @@ import android.os.Message;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.text.format.DateFormat;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 
@@ -76,23 +78,34 @@ public class MainActivity extends ActionBarActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        LocationManager locManger = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        Location loc = locManger.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-        if (loc == null) {
-            loc = locManger.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-        }
+        Log.v("haofly", "start");
+
+
+        Intent intent = new Intent(Intent.ACTION_MAIN);
+        intent.addCategory(Intent.CATEGORY_HOME);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        intent.setClass(MainActivity.this, LocalService.class);
+
+        startService(intent);
+        Log.v("haofly", "end");
+
 
         tv = (TextView)findViewById(R.id.textView);
         formatter = new SimpleDateFormat("HH:mm");
 
         //new TimeThread().start();
         new SendLocationThread().start();
-
-        Toast.makeText(this, loc.toString(), Toast.LENGTH_SHORT).show();
-        Toast.makeText(this, loc.toString(), Toast.LENGTH_SHORT).show();
-
     }
 
+    @Override
+    protected void onDestroy(){
+        Log.v("haofly", "destroy activity");
+    }
+
+
+    /*
+    更新界面显示的时间
+     */
     public class TimeThread extends Thread {
         @Override
         public void run () {
@@ -116,7 +129,15 @@ public class MainActivity extends ActionBarActivity {
             URL url = null;
             do {
                 try {
-                    url = new URL("http://45.55.23.76:8000/test");
+                    LocationManager locManger = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+                    Location loc = locManger.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                    if (loc == null) {
+                        loc = locManger.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+                    }
+                    url = new URL("http://45.55.23.76:8000/location?" +
+                            "latitude=" + loc.getLatitude() +
+                            "&&longitude=" + loc.getLongitude()
+                    );
                 } catch (MalformedURLException e) {
                     e.printStackTrace();
                 }
@@ -143,13 +164,13 @@ public class MainActivity extends ActionBarActivity {
                 msg.setData(bundle);
                 mHandler.sendMessage(msg);
 
-                /*
+
                 try {
-                    Thread.sleep(1000 * 60 * 60);
+                    Thread.sleep(1000 * 60);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-                */
+
             }while(true);
         }
     }
