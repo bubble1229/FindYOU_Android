@@ -1,15 +1,14 @@
 package com.example.haofly.myapplication;
 
 import android.content.Context;
-import android.content.Intent;
 import android.location.Location;
+import android.location.LocationListener;
 import android.location.LocationManager;
 
 import android.os.Handler;
 import android.os.Message;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
-import android.text.format.DateFormat;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -26,7 +25,6 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 import android.widget.TextView;
-import android.widget.Toast;
 
 
 public class MainActivity extends ActionBarActivity {
@@ -35,6 +33,7 @@ public class MainActivity extends ActionBarActivity {
     private static final int msgKey2 = 2;
     private static TextView tv;
     private static Format formatter;
+    LocationManager locManger;
 
     /**
      * Instances of static inner classes do not hold an implicit
@@ -75,33 +74,63 @@ public class MainActivity extends ActionBarActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Log.v("aaa", "app start");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        Log.v("haofly", "start");
+        locManger = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 
-
-        Intent intent = new Intent(Intent.ACTION_MAIN);
-        intent.addCategory(Intent.CATEGORY_HOME);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        intent.setClass(MainActivity.this, LocalService.class);
-
-        startService(intent);
-        Log.v("haofly", "end");
+        // 下面表示60秒，1公里的变化
+        locManger.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 60000, (float)0.0000001, locationListener);
 
 
         tv = (TextView)findViewById(R.id.textView);
         formatter = new SimpleDateFormat("HH:mm");
 
         //new TimeThread().start();
-        new SendLocationThread().start();
+        //new SendLocationThread().start();
     }
 
-    @Override
-    protected void onDestroy(){
-        Log.v("haofly", "destroy activity");
-    }
+    LocationListener locationListener = new LocationListener() {
+        @Override
+        public void onLocationChanged(Location location) {
+            Log.v("aaa", "位置发生了变化");
+            HttpURLConnection connection = null;
+            String result = "";
+            try {
+                URL url = new URL("http://45.55.23.76:8000/location?" +
+                        "latitude=" + "123" +
+                        "&&longitude=" + "234"
+                );
+                connection = (HttpURLConnection) url.openConnection();
+                InputStreamReader in = new InputStreamReader((connection.getInputStream()));
+                BufferedReader bufferedReader = new BufferedReader(in);
+                StringBuffer strBuffer = new StringBuffer();
+                String line = null;
+                while ((line = bufferedReader.readLine()) != null) {
+                    strBuffer.append(line);
+                }
+                result = strBuffer.toString();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
 
+        @Override
+        public void onStatusChanged(String s, int i, Bundle bundle) {
+
+        }
+
+        @Override
+        public void onProviderEnabled(String s) {
+
+        }
+
+        @Override
+        public void onProviderDisabled(String s) {
+
+        }
+    };
 
     /*
     更新界面显示的时间
@@ -128,19 +157,29 @@ public class MainActivity extends ActionBarActivity {
         public void run(){
             URL url = null;
             do {
+                Log.v("aaa", "start SendLocationThread");
                 try {
-                    LocationManager locManger = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+
+                    Log.v("aaa", "step 0.1");
+                    // LocationManager locManger = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
                     Location loc = locManger.getLastKnownLocation(LocationManager.GPS_PROVIDER);
                     if (loc == null) {
                         loc = locManger.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
                     }
+                    Log.v("aaa", "step 0.2");
+                    Log.v("aaa", String.valueOf(loc.getLatitude()));
+                    Log.v("aaa", "step 0.3");
+                    String my_url = "http://45.55.23.76:8000/location?" + "latitude=" + loc.getLatitude() + "&&longitude=" + loc.getLongitude();
+                    Log.v("aaa", "step 0.5");
                     url = new URL("http://45.55.23.76:8000/location?" +
                             "latitude=" + loc.getLatitude() +
                             "&&longitude=" + loc.getLongitude()
                     );
+                    Log.v("aaa", "step 0.9");
                 } catch (MalformedURLException e) {
                     e.printStackTrace();
                 }
+                Log.v("aaa", "step 1");
                 HttpURLConnection connection = null;
                 String result = "";
                 try {
@@ -157,6 +196,8 @@ public class MainActivity extends ActionBarActivity {
                     e.printStackTrace();
                 }
 
+                Log.v("aaa", "step 2");
+
                 Message msg = new Message();
                 msg.what = msgKey2;
                 Bundle bundle = new Bundle();
@@ -164,9 +205,9 @@ public class MainActivity extends ActionBarActivity {
                 msg.setData(bundle);
                 mHandler.sendMessage(msg);
 
-
+                Log.v("haofly", "come on");
                 try {
-                    Thread.sleep(1000 * 60);
+                    Thread.sleep(1000);// * 60 * 10);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
