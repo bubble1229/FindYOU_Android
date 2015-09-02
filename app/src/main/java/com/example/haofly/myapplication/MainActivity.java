@@ -7,6 +7,7 @@ import android.location.LocationManager;
 
 import android.os.Handler;
 import android.os.Message;
+import android.os.NetworkOnMainThreadException;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -87,7 +88,7 @@ public class MainActivity extends ActionBarActivity {
         tv = (TextView)findViewById(R.id.textView);
         formatter = new SimpleDateFormat("HH:mm");
 
-        //new TimeThread().start();
+        new TimeThread().start();
         //new SendLocationThread().start();
     }
 
@@ -95,25 +96,7 @@ public class MainActivity extends ActionBarActivity {
         @Override
         public void onLocationChanged(Location location) {
             Log.v("aaa", "位置发生了变化");
-            HttpURLConnection connection = null;
-            String result = "";
-            try {
-                URL url = new URL("http://45.55.23.76:8000/location?" +
-                        "latitude=" + "123" +
-                        "&&longitude=" + "234"
-                );
-                connection = (HttpURLConnection) url.openConnection();
-                InputStreamReader in = new InputStreamReader((connection.getInputStream()));
-                BufferedReader bufferedReader = new BufferedReader(in);
-                StringBuffer strBuffer = new StringBuffer();
-                String line = null;
-                while ((line = bufferedReader.readLine()) != null) {
-                    strBuffer.append(line);
-                }
-                result = strBuffer.toString();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            new SendLocationThread().start();
         }
 
         @Override
@@ -156,63 +139,42 @@ public class MainActivity extends ActionBarActivity {
         @Override
         public void run(){
             URL url = null;
-            do {
-                Log.v("aaa", "start SendLocationThread");
-                try {
-
-                    Log.v("aaa", "step 0.1");
-                    // LocationManager locManger = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-                    Location loc = locManger.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-                    if (loc == null) {
-                        loc = locManger.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-                    }
-                    Log.v("aaa", "step 0.2");
-                    Log.v("aaa", String.valueOf(loc.getLatitude()));
-                    Log.v("aaa", "step 0.3");
-                    String my_url = "http://45.55.23.76:8000/location?" + "latitude=" + loc.getLatitude() + "&&longitude=" + loc.getLongitude();
-                    Log.v("aaa", "step 0.5");
-                    url = new URL("http://45.55.23.76:8000/location?" +
-                            "latitude=" + loc.getLatitude() +
-                            "&&longitude=" + loc.getLongitude()
-                    );
-                    Log.v("aaa", "step 0.9");
-                } catch (MalformedURLException e) {
-                    e.printStackTrace();
+            try {
+                Log.v("aaa", "开启线程");
+                LocationManager locManger = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+                Location loc = locManger.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                if (loc == null) {
+                    loc = locManger.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
                 }
-                Log.v("aaa", "step 1");
-                HttpURLConnection connection = null;
-                String result = "";
-                try {
-                    connection = (HttpURLConnection) url.openConnection();
-                    InputStreamReader in = new InputStreamReader((connection.getInputStream()));
-                    BufferedReader bufferedReader = new BufferedReader(in);
-                    StringBuffer strBuffer = new StringBuffer();
-                    String line = null;
-                    while ((line = bufferedReader.readLine()) != null) {
-                        strBuffer.append(line);
-                    }
-                    result = strBuffer.toString();
-                } catch (IOException e) {
-                    e.printStackTrace();
+                url = new URL("http://45.55.23.76:8000/location?" +
+                        "latitude=" + loc.getLatitude() +
+                        "&&longitude=" + loc.getLongitude()
+                );
+            } catch (MalformedURLException e) {
+                e.printStackTrace();
+            }
+            HttpURLConnection connection = null;
+            String result = "";
+            try {
+                connection = (HttpURLConnection) url.openConnection();
+                InputStreamReader in = new InputStreamReader((connection.getInputStream()));
+                BufferedReader bufferedReader = new BufferedReader(in);
+                StringBuffer strBuffer = new StringBuffer();
+                String line = null;
+                while ((line = bufferedReader.readLine()) != null) {
+                    strBuffer.append(line);
                 }
+                result = strBuffer.toString();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
 
-                Log.v("aaa", "step 2");
-
-                Message msg = new Message();
-                msg.what = msgKey2;
-                Bundle bundle = new Bundle();
-                bundle.putString("result", result);
-                msg.setData(bundle);
-                mHandler.sendMessage(msg);
-
-                Log.v("haofly", "come on");
-                try {
-                    Thread.sleep(1000);// * 60 * 10);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-
-            }while(true);
+            Message msg = new Message();
+            msg.what = msgKey2;
+            Bundle bundle = new Bundle();
+            bundle.putString("result", result);
+            msg.setData(bundle);
+            mHandler.sendMessage(msg);
         }
     }
 
